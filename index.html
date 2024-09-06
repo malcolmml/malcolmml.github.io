@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Table with Calculations</title>
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            text-align: center;
+            padding: 5px;
+            font-size: 14px;
+        }
+        input[type="number"] {
+            width: 60px;
+            text-align: center;
+        }
+        input[type="date"] {
+            margin-left: 10px;
+        }
+        .input-row {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .table-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        table {
+            height: auto;
+            max-height: 300px; /* Make the table height shorter */
+            overflow: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Dynamic Financial Calculation</h2>
+    
+    <div class="input-row">
+        <label for="datePicker">Select Date:</label>
+        <input type="date" id="datePicker" onchange="createTable()">
+    </div>
+
+    <div class="input-container">
+        <div class="input-row">
+            <label for="inputC">Ledger Balance:</label>
+            <input type="number" id="inputC" oninput="updateTable()" placeholder="Enter ledger balance">
+        </div>
+        <div class="input-row">
+            <label for="inputA">Current Month Average Daily Balance:</label>
+            <input type="number" id="inputA" oninput="updateTable()" placeholder="Enter average daily balance">
+        </div>
+        <div class="input-row">
+            <label for="inputD">Average Daily Balance Increase vs. Last Month:</label>
+            <input type="number" id="inputD" oninput="updateTable()" placeholder="Enter balance increase">
+        </div>
+        <div class="input-row">
+            <label for="targetValue">Target Value:</label>
+            <input type="number" id="targetValue" value="550" oninput="updateTable()" placeholder="Enter target value">
+        </div>
+    </div>
+
+    <div class="input-row">
+        <span id="bankTransaction"></span>
+    </div>
+
+    <div class="table-container">
+        <!-- Average Balance Row -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Average Balance</th>
+                    <th>No Change</th>
+                    <th>With Change</th>
+                </tr>
+            </thead>
+            <tbody id="averageBalanceRow">
+                <!-- Average Balance will be calculated and inserted here -->
+            </tbody>
+        </table>
+
+        <!-- Main Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>No Change</th>
+                    <th>With Change</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- Rows will be dynamically inserted -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function getCurrentDate() {
+            const today = new Date();
+            return today.toISOString().split('T')[0]; // Get date in YYYY-MM-DD format
+        }
+
+        function getDaysInMonth(year, month) {
+            return new Date(year, month, 0).getDate();
+        }
+
+        function createTable() {
+            const tableBody = document.getElementById("tableBody");
+            tableBody.innerHTML = ''; // Clear previous rows
+            const selectedDate = new Date(document.getElementById("datePicker").value);
+            const year = selectedDate.getFullYear();
+            const month = selectedDate.getMonth() + 1; // JavaScript months are 0-indexed
+            const totalDaysInMonth = getDaysInMonth(year, month);
+
+            for (let day = 1; day <= totalDaysInMonth; day++) {
+                const row = document.createElement("tr");
+                row.innerHTML = `<td>${day}/${month}</td><td></td><td></td>`;
+                tableBody.appendChild(row);
+            }
+
+            updateTable(); // Reflect initial inputs
+        }
+
+        function updateTable() {
+    const inputA = parseFloat(document.getElementById("inputA").value); // Current Month Average Daily Balance
+    const inputC = parseFloat(document.getElementById("inputC").value); // Ledger Balance
+    const inputD = parseFloat(document.getElementById("inputD").value); // Average Daily Balance Increase vs. Last Month
+    const targetValue = parseFloat(document.getElementById("targetValue").value) || 550; // Default to 550 if not set
+    const tableBody = document.getElementById("tableBody");
+
+    if (isNaN(inputA) || isNaN(inputC) || isNaN(inputD)) {
+        document.getElementById("bankTransaction").textContent = '';
+        document.getElementById("averageBalanceRow").innerHTML = '';
+        return;
+    }
+
+    // Calculate E = A - D
+    const calculatedE = inputA - inputD;
+
+    // Calculate the target average balance for the month
+    const targetAverage = calculatedE + targetValue;
+
+    const selectedDate = new Date(document.getElementById("datePicker").value);
+    const totalDaysInMonth = getDaysInMonth(selectedDate.getFullYear(), selectedDate.getMonth() + 1);
+    const selectedDay = selectedDate.getDate();
+
+    const totalRequiredSum = targetAverage * totalDaysInMonth;
+    const remainingSumForB = totalRequiredSum - (inputA * (selectedDay - 1)); // Only up to the day before today
+
+    const calculatedB = remainingSumForB / (totalDaysInMonth - (selectedDay - 1));
+
+    // Calculate F = Ledger Balance - Required Daily Balance for Remaining Days
+    const calculatedF = inputC - calculatedB;
+
+    const bankTransaction = document.getElementById("bankTransaction");
+
+    // Display the bank transaction message
+    if (calculatedF < 0) {
+        bankTransaction.textContent = `Deposit ${Math.abs(calculatedF).toFixed(2)} to bank account`;
+    } else {
+        bankTransaction.textContent = `Withdraw ${calculatedF.toFixed(2)} from bank account`;
+    }
+
+    // Update the table values for past days (A) and future days (calculated B)
+    for (let day = 0; day < totalDaysInMonth; day++) {
+        const valueCell1 = tableBody.rows[day].cells[1];
+        const valueCell2 = tableBody.rows[day].cells[2];
+
+        if (day < selectedDay - 1) {
+            valueCell1.textContent = inputA.toFixed(2); // No Change
+            valueCell2.textContent = inputA.toFixed(2); // No Change
+        } else {
+            valueCell1.textContent = inputC.toFixed(2); // No Change
+            valueCell2.textContent = calculatedB.toFixed(2); // With Change
+        }
+    }
+
+    // Calculate and display the average balances
+    const averageNoChange = ((inputA * (selectedDay - 1)) + (inputC * (totalDaysInMonth - (selectedDay - 1)))) / totalDaysInMonth;
+    const averageWithChange = ((inputA * (selectedDay - 1)) + (calculatedB * (totalDaysInMonth - (selectedDay - 1)))) / totalDaysInMonth;
+
+    document.getElementById("averageBalanceRow").innerHTML = `<tr><td>Average Balance</td><td>${averageNoChange.toFixed(2)}</td><td>${averageWithChange.toFixed(2)}</td></tr>`;
+}
+
+
+        // Initialize with today's date when the page loads
+        window.onload = function() {
+            const datePicker = document.getElementById("datePicker");
+            datePicker.value = getCurrentDate();
+            createTable();
+        };
+    </script>
+</body>
+</html>
