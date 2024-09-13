@@ -46,6 +46,15 @@
 <body>
     <h2>Dynamic Financial Calculation</h2>
     
+    <!-- File Upload Form -->
+    <div class="input-row">
+        <form id="uploadForm" method="post" enctype="multipart/form-data">
+            <label for="fileInput">Upload Image:</label>
+            <input type="file" id="fileInput" name="file" accept="image/*" required>
+            <input type="submit" value="Upload">
+        </form>
+    </div>
+
     <div class="input-row">
         <label for="datePicker">Select Date:</label>
         <input type="date" id="datePicker" onchange="createTable()">
@@ -132,66 +141,90 @@
         }
 
         function updateTable() {
-    const inputA = parseFloat(document.getElementById("inputA").value); // Current Month Average Daily Balance
-    const inputC = parseFloat(document.getElementById("inputC").value); // Ledger Balance
-    const inputD = parseFloat(document.getElementById("inputD").value); // Average Daily Balance Increase vs. Last Month
-    const targetValue = parseFloat(document.getElementById("targetValue").value) || 550; // Default to 550 if not set
-    const tableBody = document.getElementById("tableBody");
+            const inputA = parseFloat(document.getElementById("inputA").value); // Current Month Average Daily Balance
+            const inputC = parseFloat(document.getElementById("inputC").value); // Ledger Balance
+            const inputD = parseFloat(document.getElementById("inputD").value); // Average Daily Balance Increase vs. Last Month
+            const targetValue = parseFloat(document.getElementById("targetValue").value) || 550; // Default to 550 if not set
+            const tableBody = document.getElementById("tableBody");
 
-    if (isNaN(inputA) || isNaN(inputC) || isNaN(inputD)) {
-        document.getElementById("bankTransaction").textContent = '';
-        document.getElementById("averageBalanceRow").innerHTML = '';
-        return;
-    }
+            if (isNaN(inputA) || isNaN(inputC) || isNaN(inputD)) {
+                document.getElementById("bankTransaction").textContent = '';
+                document.getElementById("averageBalanceRow").innerHTML = '';
+                return;
+            }
 
-    // Calculate E = A - D
-    const calculatedE = inputA - inputD;
+            // Calculate E = A - D
+            const calculatedE = inputA - inputD;
 
-    // Calculate the target average balance for the month
-    const targetAverage = calculatedE + targetValue;
+            // Calculate the target average balance for the month
+            const targetAverage = calculatedE + targetValue;
 
-    const selectedDate = new Date(document.getElementById("datePicker").value);
-    const totalDaysInMonth = getDaysInMonth(selectedDate.getFullYear(), selectedDate.getMonth() + 1);
-    const selectedDay = selectedDate.getDate();
+            const selectedDate = new Date(document.getElementById("datePicker").value);
+            const totalDaysInMonth = getDaysInMonth(selectedDate.getFullYear(), selectedDate.getMonth() + 1);
+            const selectedDay = selectedDate.getDate();
 
-    const totalRequiredSum = targetAverage * totalDaysInMonth;
-    const remainingSumForB = totalRequiredSum - (inputA * (selectedDay - 1)); // Only up to the day before today
+            const totalRequiredSum = targetAverage * totalDaysInMonth;
+            const remainingSumForB = totalRequiredSum - (inputA * (selectedDay - 1)); // Only up to the day before today
 
-    const calculatedB = remainingSumForB / (totalDaysInMonth - (selectedDay - 1));
+            const calculatedB = remainingSumForB / (totalDaysInMonth - (selectedDay - 1));
 
-    // Calculate F = Ledger Balance - Required Daily Balance for Remaining Days
-    const calculatedF = inputC - calculatedB;
+            // Calculate F = Ledger Balance - Required Daily Balance for Remaining Days
+            const calculatedF = inputC - calculatedB;
 
-    const bankTransaction = document.getElementById("bankTransaction");
+            const bankTransaction = document.getElementById("bankTransaction");
 
-    // Display the bank transaction message
-    if (calculatedF < 0) {
-        bankTransaction.textContent = `Deposit ${Math.abs(calculatedF).toFixed(2)} to bank account`;
-    } else {
-        bankTransaction.textContent = `Withdraw ${calculatedF.toFixed(2)} from bank account`;
-    }
+            // Display the bank transaction message
+            if (calculatedF < 0) {
+                bankTransaction.textContent = `Deposit ${Math.abs(calculatedF).toFixed(2)} to bank account`;
+            } else {
+                bankTransaction.textContent = `Withdraw ${calculatedF.toFixed(2)} from bank account`;
+            }
 
-    // Update the table values for past days (A) and future days (calculated B)
-    for (let day = 0; day < totalDaysInMonth; day++) {
-        const valueCell1 = tableBody.rows[day].cells[1];
-        const valueCell2 = tableBody.rows[day].cells[2];
+            // Update the table values for past days (A) and future days (calculated B)
+            for (let day = 0; day < totalDaysInMonth; day++) {
+                const valueCell1 = tableBody.rows[day].cells[1];
+                const valueCell2 = tableBody.rows[day].cells[2];
 
-        if (day < selectedDay - 1) {
-            valueCell1.textContent = inputA.toFixed(2); // No Change
-            valueCell2.textContent = inputA.toFixed(2); // No Change
-        } else {
-            valueCell1.textContent = inputC.toFixed(2); // No Change
-            valueCell2.textContent = calculatedB.toFixed(2); // With Change
+                if (day < selectedDay - 1) {
+                    valueCell1.textContent = inputA.toFixed(2); // No Change
+                    valueCell2.textContent = inputA.toFixed(2); // No Change
+                } else {
+                    valueCell1.textContent = inputC.toFixed(2); // No Change
+                    valueCell2.textContent = calculatedB.toFixed(2); // With Change
+                }
+            }
+
+            // Calculate and display the average balances
+            const averageNoChange = ((inputA * (selectedDay - 1)) + (inputC * (totalDaysInMonth - (selectedDay - 1)))) / totalDaysInMonth;
+            const averageWithChange = ((inputA * (selectedDay - 1)) + (calculatedB * (totalDaysInMonth - (selectedDay - 1)))) / totalDaysInMonth;
+
+            document.getElementById("averageBalanceRow").innerHTML = `<tr><td>Average Balance</td><td>${averageNoChange.toFixed(2)}</td><td>${averageWithChange.toFixed(2)}</td></tr>`;
         }
-    }
 
-    // Calculate and display the average balances
-    const averageNoChange = ((inputA * (selectedDay - 1)) + (inputC * (totalDaysInMonth - (selectedDay - 1)))) / totalDaysInMonth;
-    const averageWithChange = ((inputA * (selectedDay - 1)) + (calculatedB * (totalDaysInMonth - (selectedDay - 1)))) / totalDaysInMonth;
+        // Handle file upload and update inputs
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
 
-    document.getElementById("averageBalanceRow").innerHTML = `<tr><td>Average Balance</td><td>${averageNoChange.toFixed(2)}</td><td>${averageWithChange.toFixed(2)}</td></tr>`;
-}
-
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert("Error: " + data.error);
+                } else {
+                    document.getElementById('inputC').value = data['Ledger Balance'] || '';
+                    document.getElementById('inputA').value = data['Current Month Average Daily Balance'] || '';
+                    document.getElementById('inputD').value = data['Average Daily Balance Increase'] || '';
+                    updateTable(); // Update table with new values
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
 
         // Initialize with today's date when the page loads
         window.onload = function() {
