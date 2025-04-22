@@ -37,7 +37,7 @@
         }
         table {
             height: auto;
-            max-height: 300px; /* Make the table height shorter */
+            max-height: 300px;
             overflow: auto;
             margin-top: 20px;
         }
@@ -45,15 +45,6 @@
 </head>
 <body>
     <h2>Dynamic Financial Calculation</h2>
-    
-    <!-- File Upload Form -->
-    <div class="input-row">
-        <form id="uploadForm" method="post" enctype="multipart/form-data">
-            <label for="fileInput">Upload Image:</label>
-            <input type="file" id="fileInput" name="file" accept="image/*" required>
-            <input type="submit" value="Upload">
-        </form>
-    </div>
 
     <div class="input-row">
         <label for="datePicker">Select Date:</label>
@@ -93,9 +84,7 @@
                     <th>With Change</th>
                 </tr>
             </thead>
-            <tbody id="averageBalanceRow">
-                <!-- Average Balance will be calculated and inserted here -->
-            </tbody>
+            <tbody id="averageBalanceRow"></tbody>
         </table>
 
         <!-- Main Table -->
@@ -107,16 +96,14 @@
                     <th>With Change</th>
                 </tr>
             </thead>
-            <tbody id="tableBody">
-                <!-- Rows will be dynamically inserted -->
-            </tbody>
+            <tbody id="tableBody"></tbody>
         </table>
     </div>
 
     <script>
         function getCurrentDate() {
             const today = new Date();
-            return today.toISOString().split('T')[0]; // Get date in YYYY-MM-DD format
+            return today.toISOString().split('T')[0];
         }
 
         function getDaysInMonth(year, month) {
@@ -125,10 +112,10 @@
 
         function createTable() {
             const tableBody = document.getElementById("tableBody");
-            tableBody.innerHTML = ''; // Clear previous rows
+            tableBody.innerHTML = '';
             const selectedDate = new Date(document.getElementById("datePicker").value);
             const year = selectedDate.getFullYear();
-            const month = selectedDate.getMonth() + 1; // JavaScript months are 0-indexed
+            const month = selectedDate.getMonth() + 1;
             const totalDaysInMonth = getDaysInMonth(year, month);
 
             for (let day = 1; day <= totalDaysInMonth; day++) {
@@ -137,14 +124,14 @@
                 tableBody.appendChild(row);
             }
 
-            updateTable(); // Reflect initial inputs
+            updateTable();
         }
 
         function updateTable() {
-            const inputA = parseFloat(document.getElementById("inputA").value); // Current Month Average Daily Balance
-            const inputC = parseFloat(document.getElementById("inputC").value); // Ledger Balance
-            const inputD = parseFloat(document.getElementById("inputD").value); // Average Daily Balance Increase vs. Last Month
-            const targetValue = parseFloat(document.getElementById("targetValue").value) || 550; // Default to 550 if not set
+            const inputA = parseFloat(document.getElementById("inputA").value);
+            const inputC = parseFloat(document.getElementById("inputC").value);
+            const inputD = parseFloat(document.getElementById("inputD").value);
+            const targetValue = parseFloat(document.getElementById("targetValue").value) || 550;
             const tableBody = document.getElementById("tableBody");
 
             if (isNaN(inputA) || isNaN(inputC) || isNaN(inputD)) {
@@ -153,10 +140,7 @@
                 return;
             }
 
-            // Calculate E = A - D
             const calculatedE = inputA - inputD;
-
-            // Calculate the target average balance for the month
             const targetAverage = calculatedE + targetValue;
 
             const selectedDate = new Date(document.getElementById("datePicker").value);
@@ -164,69 +148,38 @@
             const selectedDay = selectedDate.getDate();
 
             const totalRequiredSum = targetAverage * totalDaysInMonth;
-            const remainingSumForB = totalRequiredSum - (inputA * (selectedDay - 1)); // Only up to the day before today
-
+            const remainingSumForB = totalRequiredSum - (inputA * (selectedDay - 1));
             const calculatedB = remainingSumForB / (totalDaysInMonth - (selectedDay - 1));
 
-            // Calculate F = Ledger Balance - Required Daily Balance for Remaining Days
             const calculatedF = inputC - calculatedB;
 
             const bankTransaction = document.getElementById("bankTransaction");
 
-            // Display the bank transaction message
             if (calculatedF < 0) {
                 bankTransaction.textContent = `Deposit ${Math.abs(calculatedF).toFixed(2)} to bank account`;
             } else {
                 bankTransaction.textContent = `Withdraw ${calculatedF.toFixed(2)} from bank account`;
             }
 
-            // Update the table values for past days (A) and future days (calculated B)
             for (let day = 0; day < totalDaysInMonth; day++) {
                 const valueCell1 = tableBody.rows[day].cells[1];
                 const valueCell2 = tableBody.rows[day].cells[2];
 
                 if (day < selectedDay - 1) {
-                    valueCell1.textContent = inputA.toFixed(2); // No Change
-                    valueCell2.textContent = inputA.toFixed(2); // No Change
+                    valueCell1.textContent = inputA.toFixed(2);
+                    valueCell2.textContent = inputA.toFixed(2);
                 } else {
-                    valueCell1.textContent = inputC.toFixed(2); // No Change
-                    valueCell2.textContent = calculatedB.toFixed(2); // With Change
+                    valueCell1.textContent = inputC.toFixed(2);
+                    valueCell2.textContent = calculatedB.toFixed(2);
                 }
             }
 
-            // Calculate and display the average balances
             const averageNoChange = ((inputA * (selectedDay - 1)) + (inputC * (totalDaysInMonth - (selectedDay - 1)))) / totalDaysInMonth;
             const averageWithChange = ((inputA * (selectedDay - 1)) + (calculatedB * (totalDaysInMonth - (selectedDay - 1)))) / totalDaysInMonth;
 
             document.getElementById("averageBalanceRow").innerHTML = `<tr><td>Average Balance</td><td>${averageNoChange.toFixed(2)}</td><td>${averageWithChange.toFixed(2)}</td></tr>`;
         }
 
-        // Handle file upload and update inputs
-        document.getElementById('uploadForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const formData = new FormData(this);
-
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert("Error: " + data.error);
-                } else {
-                    document.getElementById('inputC').value = data['Ledger Balance'] || '';
-                    document.getElementById('inputA').value = data['Current Month Average Daily Balance'] || '';
-                    document.getElementById('inputD').value = data['Average Daily Balance Increase'] || '';
-                    updateTable(); // Update table with new values
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        });
-
-        // Initialize with today's date when the page loads
         window.onload = function() {
             const datePicker = document.getElementById("datePicker");
             datePicker.value = getCurrentDate();
